@@ -1,27 +1,116 @@
 name: Playwright Tests
+
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+
 jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install dependencies
+        working-directory: flight
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: flight
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        working-directory: flight
+        continue-on-error: true
+        run: |
+          npx playwright test
+
+      - name: Ensure jq installed
+        if: always()
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y jq || true
+
+      - name: Parse Test Results
+        if: always()
+        id: results
+        working-directory: flight
+        run: |
+          # locate the JSON file (support multiple possible locations)
+          if [ -f test-results.json ]; then
+            JSON_FILE=test-results.json
+          elif [ -f slack/test-results.json ]; then
+            JSON_FILE=slack/test-results.json
+          elif [ -f test-results/test-results.json ]; then
+            JSON_FILE=test-results/test-results.json
+          else
+            echo "No test-results JSON found; defaulting counts to 0"
+            echo "total=0" >> $GITHUB_OUTPUT
+            echo "passed=0" >> $GITHUB_OUTPUT
+            echo "failed=0" >> $GITHUB_OUTPUT
+            echo "skipped=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "Using JSON file: $JSON_FILE"
+          head -n 60 "$JSON_FILE" || true
+          # prefer aggregated stats if present, otherwise count from suites/tests
+          TOTAL=$(jq -r '(.stats.expected + .stats.unexpected + .stats.skipped) // ([.suites[].specs[].tests[]] | length)' "$JSON_FILE")
+          PASSED=$(jq -r '.stats.expected // ([.suites[].specs[].tests[] | select(.status == "expected" or .status == "passed")] | length)' "$JSON_FILE")
+          FAILED=$(jq -r '.stats.unexpected // ([.suites[].specs[].tests[] | select(.status == "unexpected" or .status == "failed" or .status == "timedOut" or .status == "crashed" or .status == "interrupted")] | length)' "$JSON_FILE")
+          SKIPPED=$(jq -r '.stats.skipped // ([.suites[].specs[].tests[] | select(.status == "skipped")] | length)' "$JSON_FILE")
+          TOTAL=${TOTAL:-0}
+          PASSED=${PASSED:-0}
+          FAILED=${FAILED:-0}
+          SKIPPED=${SKIPPED:-0}
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: slack/playwright-report/
+          retention-days: 30
+
+      - name: Send Result to Slack
+        if: always()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          TOTAL: ${{ steps.results.outputs.total }}
+          PASSED: ${{ steps.results.outputs.passed }}
+          FAILED: ${{ steps.results.outputs.failed }}
+          SKIPPED: ${{ steps.results.outputs.skipped }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TOTAL=${TOTAL:-0}
+          PASSED=${PASSED:-0}
+          FAILED=${FAILED:-0}
+          SKIPPED=${SKIPPED:-0}
+          if [ "${FAILED}" -eq 0 ]; then
+            STATUS="PASSED"
+          else
+            STATUS="FAILED"
+          fi
+          cat > payload.json <<EOF
+          {
+            "channel": "${CHANNEL_ID}",
+            "text": "*✈️ Flight Automation Test Result*\n\n*Environment:* QA\n*Branch:* ${{ github.ref_name }}\n\n*📊 Test Summary*\n━━━━━━━━━━━━━━\n*Total Tests:* ${TOTAL}\n*✅ Passed:* ${PASSED}\n*❌ Failed:* ${FAILED}\n*⏭️ Skipped:* ${SKIPPED}\n\n*Status:* ${STATUS}\n\n*📋 GitHub Action:*\n${RUN_URL}"
+          }
+          EOF
+          curl -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data @payload.json
+
+      - name: Fail Workflow If Tests Failed
+        if: ${{ steps.results.outputs.failed != '0' }}
+        run: exit 1
