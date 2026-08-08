@@ -44,7 +44,7 @@ jobs:
           # locate the JSON file (support multiple possible locations)
           if [ -f test-results.json ]; then
             JSON_FILE=test-results.json
-          elif [ -f slack/test-results.json ]; then
+          elif [ -f flight/test-results.json ]; then
             JSON_FILE=flight/test-results.json
           elif [ -f test-results/test-results.json ]; then
             JSON_FILE=test-results/test-results.json
@@ -84,7 +84,7 @@ jobs:
         if: always()
         env:
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-          SLACK_CHANEL_ID: ${{ secrets.CHANEL_ID }}
+          CHANEL_ID: ${{ secrets.CHANEL_ID }}
           TOTAL: ${{ steps.results.outputs.total }}
           PASSED: ${{ steps.results.outputs.passed }}
           FAILED: ${{ steps.results.outputs.failed }}
