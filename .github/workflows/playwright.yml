@@ -83,8 +83,8 @@ jobs:
       - name: Send Result to Slack
         if: always()
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.CHANEL_ID }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANEL_ID: ${{ secrets.CHANEL_ID }}
           TOTAL: ${{ steps.results.outputs.total }}
           PASSED: ${{ steps.results.outputs.passed }}
           FAILED: ${{ steps.results.outputs.failed }}
