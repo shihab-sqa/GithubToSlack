@@ -106,7 +106,7 @@ jobs:
           SKIPPED: ${{ steps.results.outputs.skipped }}
           DURATION: ${{ steps.results.outputs.duration_readable }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          ARTIFACT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts
+          ARTIFACT_URL: https://github.com/${{ github.repository }}/suites/${{ github.run_id }}/artifacts
         run: |
           TOTAL=${TOTAL:-0}
           PASSED=${PASSED:-0}
