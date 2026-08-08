@@ -45,7 +45,7 @@ jobs:
           if [ -f test-results.json ]; then
             JSON_FILE=test-results.json
           elif [ -f slack/test-results.json ]; then
-            JSON_FILE=slack/test-results.json
+            JSON_FILE=flight/test-results.json
           elif [ -f test-results/test-results.json ]; then
             JSON_FILE=test-results/test-results.json
           else
@@ -77,14 +77,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: slack/playwright-report/
+          path: flight/playwright-report/
           retention-days: 30
 
       - name: Send Result to Slack
         if: always()
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          SLACK_CHANNEL_ID: ${{ secrets.CHANEL_ID }}
           TOTAL: ${{ steps.results.outputs.total }}
           PASSED: ${{ steps.results.outputs.passed }}
           FAILED: ${{ steps.results.outputs.failed }}
@@ -103,11 +103,11 @@ jobs:
           cat > payload.json <<EOF
           {
             "channel": "${CHANEL_ID}",
-            "text": "*✈️ Flight Automation Test Result*\n\n*Environment:* QA\n*Branch:* ${{ github.ref_name }}\n\n*📊 Test Summary*\n━━━━━━━━━━━━━━\n*Total Tests:* ${TOTAL}\n*✅ Passed:* ${PASSED}\n*❌ Failed:* ${FAILED}\n*⏭️ Skipped:* ${SKIPPED}\n\n*Status:* ${STATUS}\n\n*📋 GitHub Action:*\n${RUN_URL}"
+            "text": "*✈️ Flight Automation Test Result*\n\n*Environment:* QA\n*Branch:* ${{ github.ref_name }}\n\n*📊 Test Summary*\n━━━━━━━━━━━━━━\n*Total Tests:* ${TOTAL}\n*✅ Passed:* ${PASSED}\n*❌ Failed:* ${FAILED}\n*⏭️ Skipped:* ${SKIPPED}\n\n*Status:* ${STATUS}\n\n*📋 GitHub Action Details Report:*\n${RUN_URL}"
           }
           EOF
           curl -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+            -H "Authorization: Bearer ${SLACK_TOKEN}" \
             -H "Content-Type: application/json; charset=utf-8" \
             --data @payload.json
 
