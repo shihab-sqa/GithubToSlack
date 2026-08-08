@@ -18,11 +18,16 @@ test('get started link', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
 
 
-  test.skip('test', async ({ page }) => {
+ 
+  });
+
+
+   test.skip('test', async ({ page }) => {
     await page.goto('https://www.google.com/');
     await page.getByRole('textbox', { name: 'Search' }).click();
     await page.getByRole('textbox', { name: 'Search' }).fill('playwright');
     await page.getByRole('button', { name: 'Google Search' }).click();
     await expect(page).toHaveURL(/.*playwright/);
+
   });
-});
+

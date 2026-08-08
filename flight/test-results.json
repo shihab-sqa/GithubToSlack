@@ -3,7 +3,8 @@
     "argv": [
       "C:\\Program Files\\nodejs\\node.exe",
       "C:\\Users\\shiha\\Desktop\\project\\New folder (4)\\flight\\node_modules\\@playwright\\test\\cli.js",
-      "test"
+      "test",
+      "--headed"
     ],
     "configFile": "C:\\Users\\shiha\\Desktop\\project\\New folder (4)\\flight\\playwright.config.js",
     "rootDir": "C:/Users/shiha/Desktop/project/New folder (4)/flight/tests",
@@ -121,12 +122,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4657,
+                  "duration": 776,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-08T16:13:27.683Z",
+                  "startTime": "2026-08-08T17:10:09.042Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -155,12 +156,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 1,
                   "status": "passed",
-                  "duration": 3444,
+                  "duration": 1656,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-08T16:13:27.738Z",
+                  "startTime": "2026-08-08T17:10:09.004Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -172,6 +173,58 @@
           "file": "example.spec.js",
           "line": 11,
           "column": 5
+        },
+        {
+          "title": "test",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "location": {
+                    "file": "C:\\Users\\shiha\\Desktop\\project\\New folder (4)\\flight\\tests\\example.spec.js",
+                    "line": 25,
+                    "column": 9
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-08T17:10:08.513Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "location": {
+                        "file": "C:\\Users\\shiha\\Desktop\\project\\New folder (4)\\flight\\tests\\example.spec.js",
+                        "line": 25,
+                        "column": 9
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "dd9b2edffe9b7501040c-5335e3d472e7312f50ba",
+          "file": "example.spec.js",
+          "line": 25,
+          "column": 9
         },
         {
           "title": "has title",
@@ -187,14 +240,14 @@
               "results": [
                 {
                   "workerIndex": 2,
-                  "parallelIndex": 2,
+                  "parallelIndex": 3,
                   "status": "passed",
-                  "duration": 2551,
+                  "duration": 3109,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-08T16:13:27.727Z",
+                  "startTime": "2026-08-08T17:10:09.012Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -221,14 +274,14 @@
               "results": [
                 {
                   "workerIndex": 3,
-                  "parallelIndex": 3,
+                  "parallelIndex": 4,
                   "status": "passed",
-                  "duration": 2515,
+                  "duration": 3039,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-08T16:13:27.691Z",
+                  "startTime": "2026-08-08T17:10:09.002Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -240,6 +293,58 @@
           "file": "example.spec.js",
           "line": 11,
           "column": 5
+        },
+        {
+          "title": "test",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "location": {
+                    "file": "C:\\Users\\shiha\\Desktop\\project\\New folder (4)\\flight\\tests\\example.spec.js",
+                    "line": 25,
+                    "column": 9
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-08T17:10:08.517Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "location": {
+                        "file": "C:\\Users\\shiha\\Desktop\\project\\New folder (4)\\flight\\tests\\example.spec.js",
+                        "line": 25,
+                        "column": 9
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "dd9b2edffe9b7501040c-c056a3ce625ad420e17d",
+          "file": "example.spec.js",
+          "line": 25,
+          "column": 9
         },
         {
           "title": "has title",
@@ -255,14 +360,14 @@
               "results": [
                 {
                   "workerIndex": 4,
-                  "parallelIndex": 4,
+                  "parallelIndex": 2,
                   "status": "passed",
-                  "duration": 688,
+                  "duration": 1334,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-08T16:13:27.702Z",
+                  "startTime": "2026-08-08T17:10:09.016Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -291,12 +396,12 @@
                   "workerIndex": 5,
                   "parallelIndex": 5,
                   "status": "passed",
-                  "duration": 4413,
+                  "duration": 2644,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-08T16:13:27.732Z",
+                  "startTime": "2026-08-08T17:10:09.076Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -308,16 +413,68 @@
           "file": "example.spec.js",
           "line": 11,
           "column": 5
+        },
+        {
+          "title": "test",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "location": {
+                    "file": "C:\\Users\\shiha\\Desktop\\project\\New folder (4)\\flight\\tests\\example.spec.js",
+                    "line": 25,
+                    "column": 9
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-08T17:10:10.172Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "location": {
+                        "file": "C:\\Users\\shiha\\Desktop\\project\\New folder (4)\\flight\\tests\\example.spec.js",
+                        "line": 25,
+                        "column": 9
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "dd9b2edffe9b7501040c-2b6a923f738af5bff7f0",
+          "file": "example.spec.js",
+          "line": 25,
+          "column": 9
         }
       ]
     }
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-08-08T16:13:27.186Z",
-    "duration": 5441.73,
+    "startTime": "2026-08-08T17:10:08.444Z",
+    "duration": 5846.831,
     "expected": 6,
-    "skipped": 0,
+    "skipped": 3,
     "unexpected": 0,
     "flaky": 0
   }
