@@ -26,10 +26,15 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
+        id: run-playwright
         working-directory: flight
         continue-on-error: true
         run: |
+          START_TIME=$(date +%s)
           npx playwright test
+          END_TIME=$(date +%s)
+          echo "start_time=$START_TIME" >> $GITHUB_OUTPUT
+          echo "end_time=$END_TIME" >> $GITHUB_OUTPUT
 
       - name: Ensure jq installed
         if: always()
@@ -44,8 +49,8 @@ jobs:
           # locate the JSON file (support multiple possible locations)
           if [ -f test-results.json ]; then
             JSON_FILE=test-results.json
-          elif [ -f flight/test-results.json ]; then
-            JSON_FILE=flight/test-results.json
+          elif [ -f ../test-results.json ]; then
+            JSON_FILE=../test-results.json
           elif [ -f test-results/test-results.json ]; then
             JSON_FILE=test-results/test-results.json
           else
@@ -54,6 +59,8 @@ jobs:
             echo "passed=0" >> $GITHUB_OUTPUT
             echo "failed=0" >> $GITHUB_OUTPUT
             echo "skipped=0" >> $GITHUB_OUTPUT
+            echo "duration_seconds=0" >> $GITHUB_OUTPUT
+            echo "duration_readable=00:00:00" >> $GITHUB_OUTPUT
             exit 0
           fi
           echo "Using JSON file: $JSON_FILE"
@@ -67,10 +74,18 @@ jobs:
           PASSED=${PASSED:-0}
           FAILED=${FAILED:-0}
           SKIPPED=${SKIPPED:-0}
+          if [ -n "${{ steps.run-playwright.outputs.start_time }}" ] && [ -n "${{ steps.run-playwright.outputs.end_time }}" ]; then
+            DURATION_SECONDS=$(( ${{ steps.run-playwright.outputs.end_time }} - ${{ steps.run-playwright.outputs.start_time }} ))
+          else
+            DURATION_SECONDS=0
+          fi
+          DURATION_READABLE=$(printf '%02d:%02d:%02d' $((DURATION_SECONDS/3600)) $((DURATION_SECONDS%3600/60)) $((DURATION_SECONDS%60)))
           echo "total=$TOTAL" >> $GITHUB_OUTPUT
           echo "passed=$PASSED" >> $GITHUB_OUTPUT
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
           echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
+          echo "duration_seconds=$DURATION_SECONDS" >> $GITHUB_OUTPUT
+          echo "duration_readable=$DURATION_READABLE" >> $GITHUB_OUTPUT
 
       - name: Upload Playwright Report
         if: always()
@@ -84,17 +99,20 @@ jobs:
         if: always()
         env:
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-          CHANEL_ID: ${{ secrets.CHANEL_ID }}
+          SLACK_CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           TOTAL: ${{ steps.results.outputs.total }}
           PASSED: ${{ steps.results.outputs.passed }}
           FAILED: ${{ steps.results.outputs.failed }}
           SKIPPED: ${{ steps.results.outputs.skipped }}
+          DURATION: ${{ steps.results.outputs.duration_readable }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ARTIFACT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts
         run: |
           TOTAL=${TOTAL:-0}
           PASSED=${PASSED:-0}
           FAILED=${FAILED:-0}
           SKIPPED=${SKIPPED:-0}
+          DURATION=${DURATION:-00:00:00}
           if [ "${FAILED}" -eq 0 ]; then
             STATUS="PASSED"
             STATUS_EMOJI=":white_check_mark:"
@@ -106,59 +124,63 @@ jobs:
           fi
           cat > payload.json <<EOF
           {
-            "channel": "${CHANEL_ID}",
-            "blocks": [
+            "channel": "${SLACK_CHANNEL_ID}",
+            "text": "Flight Automation Result - ${STATUS}",
+            "attachments": [
               {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": "✈️ Flight Automation Result",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "divider"
-              },
-              {
-                "type": "section",
-                "fields": [
-                  {"type": "mrkdwn", "text": "*Environment:*
-QA"},
-                  {"type": "mrkdwn", "text": "*Branch:*
-${{ github.ref_name }}"},
-                  {"type": "mrkdwn", "text": "*Status:*
-${STATUS_EMOJI} ${STATUS}"},
-                  {"type": "mrkdwn", "text": "*Run:*
-<${RUN_URL}|View GitHub Action>"}
-                ]
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*📊 Test Summary*"
-                }
-              },
-              {
-                "type": "section",
-                "fields": [
-                  {"type": "mrkdwn", "text": "*Total Tests:*
-${TOTAL}"},
-                  {"type": "mrkdwn", "text": "*Passed:*
-${PASSED}"},
-                  {"type": "mrkdwn", "text": "*Failed:*
-${FAILED}"},
-                  {"type": "mrkdwn", "text": "*Skipped:*
-${SKIPPED}"}
-                ]
-              },
-              {
-                "type": "divider"
-              },
-              {
-                "type": "context",
-                "elements": [
-                  {"type": "mrkdwn", "text": "Generated by GitHub Actions | Playwright Tests"}
+                "color": "${STATUS_COLOR}",
+                "blocks": [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "*✈️ Flight Automation Result*\n*Status:* ${STATUS_EMOJI} ${STATUS}"
+                    }
+                  },
+                  {
+                    "type": "divider"
+                  },
+                  {
+                    "type": "section",
+                    "fields": [
+                      {"type": "mrkdwn", "text": "*Environment:*\nQA"},
+                      {"type": "mrkdwn", "text": "*Branch:*\n${{ github.ref_name }}"},
+                      {"type": "mrkdwn", "text": "*Duration:*\n${DURATION}"},
+                      {"type": "mrkdwn", "text": "*Run:*\n<${RUN_URL}|View GitHub Action>"}
+                    ]
+                  },
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "*📊 Test Summary*"
+                    }
+                  },
+                  {
+                    "type": "section",
+                    "fields": [
+                      {"type": "mrkdwn", "text": "*Total Tests:*\n${TOTAL}"},
+                      {"type": "mrkdwn", "text": "*Passed:*\n${PASSED}"},
+                      {"type": "mrkdwn", "text": "*Failed:*\n${FAILED}"},
+                      {"type": "mrkdwn", "text": "*Skipped:*\n${SKIPPED}"}
+                    ]
+                  },
+                  {
+                    "type": "divider"
+                  },
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "*Reports & Artifacts*\n<${ARTIFACT_URL}|View Playwright artifacts>"
+                    }
+                  },
+                  {
+                    "type": "context",
+                    "elements": [
+                      {"type": "mrkdwn", "text": "Generated by GitHub Actions | Playwright Tests"}
+                    ]
+                  }
                 ]
               }
             ]
