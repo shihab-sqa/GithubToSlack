@@ -120,7 +120,6 @@ jobs:
           SKIPPED: ${{ steps.results.outputs.skipped }}
           DURATION: ${{ steps.results.outputs.duration_readable }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          ARTIFACT_URL: ${{ steps.get_artifacts.outputs.artifact_url }}
         run: |
           TOTAL=${TOTAL:-0}
           PASSED=${PASSED:-0}
@@ -136,6 +135,14 @@ jobs:
             STATUS_EMOJI=":x:"
             STATUS_COLOR="#ff0000"
           fi
+          # Prefer linking to the run page; direct artifact archive URLs require authentication and return 401 when opened in a browser.
+          ARTIFACT_API="${{ steps.get_artifacts.outputs.artifact_url }}"
+          if [ -n "$ARTIFACT_API" ]; then
+            ARTIFACT_LINK="$RUN_URL"
+          else
+            ARTIFACT_LINK="$RUN_URL"
+          fi
+
           cat > payload.json <<EOF
           {
             "channel": "${SLACK_CHANNEL_ID}",
@@ -186,7 +193,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": "*Reports & Artifacts*\n<${ARTIFACT_URL}|View Playwright artifacts>"
+                      "text": "*Reports & Artifacts*\n<${ARTIFACT_LINK}|View Playwright artifacts>"
                     }
                   },
                   {
