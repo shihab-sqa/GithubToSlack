@@ -102,7 +102,7 @@ jobs:
           fi
           cat > payload.json <<EOF
           {
-            "channel": "${CHANNEL_ID}",
+            "channel": "${CHANEL_ID}",
             "text": "*✈️ Flight Automation Test Result*\n\n*Environment:* QA\n*Branch:* ${{ github.ref_name }}\n\n*📊 Test Summary*\n━━━━━━━━━━━━━━\n*Total Tests:* ${TOTAL}\n*✅ Passed:* ${PASSED}\n*❌ Failed:* ${FAILED}\n*⏭️ Skipped:* ${SKIPPED}\n\n*Status:* ${STATUS}\n\n*📋 GitHub Action:*\n${RUN_URL}"
           }
           EOF
