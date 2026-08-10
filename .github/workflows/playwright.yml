@@ -1,92 +1,177 @@
 name: Playwright Tests
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  schedule:
+    # Every Saturday at 10:00 AM Bangladesh time (UTC+6)
+    # GitHub Actions uses UTC, so 10:00 AM BD = 04:00 UTC
+    - cron: '0 4 * * 6'
+
+  # Allows manual execution from GitHub Actions
+  workflow_dispatch:
 
 jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+    steps:
+
+      # --------------------------------------------------
+      # Checkout Repository
+      # --------------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # Setup Node.js
+      # --------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
+          cache: npm
+          cache-dependency-path: flight/package-lock.json
 
+      # --------------------------------------------------
+      # Install Dependencies
+      # --------------------------------------------------
       - name: Install dependencies
         working-directory: flight
         run: npm ci
 
+      # --------------------------------------------------
+      # Install Playwright Browsers
+      # --------------------------------------------------
       - name: Install Playwright Browsers
         working-directory: flight
         run: npx playwright install --with-deps
 
+      # --------------------------------------------------
+      # Run Playwright Tests
+      # --------------------------------------------------
       - name: Run Playwright tests
         id: run-playwright
         working-directory: flight
         continue-on-error: true
         run: |
           START_TIME=$(date +%s)
-          npx playwright test
-          END_TIME=$(date +%s)
-          echo "start_time=$START_TIME" >> $GITHUB_OUTPUT
-          echo "end_time=$END_TIME" >> $GITHUB_OUTPUT
 
+          npx playwright test
+          TEST_EXIT_CODE=$?
+
+          END_TIME=$(date +%s)
+
+          echo "start_time=$START_TIME" >> "$GITHUB_OUTPUT"
+          echo "end_time=$END_TIME" >> "$GITHUB_OUTPUT"
+          echo "exit_code=$TEST_EXIT_CODE" >> "$GITHUB_OUTPUT"
+
+          exit $TEST_EXIT_CODE
+
+      # --------------------------------------------------
+      # Install jq
+      # --------------------------------------------------
       - name: Ensure jq installed
         if: always()
         run: |
-          sudo apt-get update -y && sudo apt-get install -y jq || true
+          sudo apt-get update -y
+          sudo apt-get install -y jq || true
 
+      # --------------------------------------------------
+      # Parse Playwright Test Results
+      # --------------------------------------------------
       - name: Parse Test Results
         if: always()
         id: results
         working-directory: flight
         run: |
-          # locate the JSON file (support multiple possible locations)
+
+          # Locate JSON result file
           if [ -f test-results.json ]; then
             JSON_FILE=test-results.json
+
           elif [ -f ../test-results.json ]; then
             JSON_FILE=../test-results.json
+
           elif [ -f test-results/test-results.json ]; then
             JSON_FILE=test-results/test-results.json
+
           else
             echo "No test-results JSON found; defaulting counts to 0"
-            echo "total=0" >> $GITHUB_OUTPUT
-            echo "passed=0" >> $GITHUB_OUTPUT
-            echo "failed=0" >> $GITHUB_OUTPUT
-            echo "skipped=0" >> $GITHUB_OUTPUT
-            echo "duration_seconds=0" >> $GITHUB_OUTPUT
-            echo "duration_readable=00:00:00" >> $GITHUB_OUTPUT
+
+            echo "total=0" >> "$GITHUB_OUTPUT"
+            echo "passed=0" >> "$GITHUB_OUTPUT"
+            echo "failed=0" >> "$GITHUB_OUTPUT"
+            echo "skipped=0" >> "$GITHUB_OUTPUT"
+            echo "duration_seconds=0" >> "$GITHUB_OUTPUT"
+            echo "duration_readable=00:00:00" >> "$GITHUB_OUTPUT"
+
             exit 0
           fi
+
           echo "Using JSON file: $JSON_FILE"
+
           head -n 60 "$JSON_FILE" || true
-          # prefer aggregated stats if present, otherwise count from suites/tests
-          TOTAL=$(jq -r '(.stats.expected + .stats.unexpected + .stats.skipped) // ([.suites[].specs[].tests[]] | length)' "$JSON_FILE")
-          PASSED=$(jq -r '.stats.expected // ([.suites[].specs[].tests[] | select(.status == "expected" or .status == "passed")] | length)' "$JSON_FILE")
-          FAILED=$(jq -r '.stats.unexpected // ([.suites[].specs[].tests[] | select(.status == "unexpected" or .status == "failed" or .status == "timedOut" or .status == "crashed" or .status == "interrupted")] | length)' "$JSON_FILE")
-          SKIPPED=$(jq -r '.stats.skipped // ([.suites[].specs[].tests[] | select(.status == "skipped")] | length)' "$JSON_FILE")
+
+          # --------------------------------------------------
+          # Extract Test Statistics
+          # --------------------------------------------------
+
+          TOTAL=$(jq -r \
+            '(.stats.expected + .stats.unexpected + .stats.skipped) // ([.suites[].specs[].tests[]] | length)' \
+            "$JSON_FILE")
+
+          PASSED=$(jq -r \
+            '.stats.expected // ([.suites[].specs[].tests[] | select(.status == "expected" or .status == "passed")] | length)' \
+            "$JSON_FILE")
+
+          FAILED=$(jq -r \
+            '.stats.unexpected // ([.suites[].specs[].tests[] | select(.status == "unexpected" or .status == "failed" or .status == "timedOut" or .status == "crashed" or .status == "interrupted")] | length)' \
+            "$JSON_FILE")
+
+          SKIPPED=$(jq -r \
+            '.stats.skipped // ([.suites[].specs[].tests[] | select(.status == "skipped")] | length)' \
+            "$JSON_FILE")
+
           TOTAL=${TOTAL:-0}
           PASSED=${PASSED:-0}
           FAILED=${FAILED:-0}
           SKIPPED=${SKIPPED:-0}
-          if [ -n "${{ steps.run-playwright.outputs.start_time }}" ] && [ -n "${{ steps.run-playwright.outputs.end_time }}" ]; then
-            DURATION_SECONDS=$(( ${{ steps.run-playwright.outputs.end_time }} - ${{ steps.run-playwright.outputs.start_time }} ))
+
+          # --------------------------------------------------
+          # Calculate Execution Duration
+          # --------------------------------------------------
+
+          if [ -n "${{ steps.run-playwright.outputs.start_time }}" ] && \
+             [ -n "${{ steps.run-playwright.outputs.end_time }}" ]; then
+
+            DURATION_SECONDS=$(( \
+              ${{ steps.run-playwright.outputs.end_time }} - \
+              ${{ steps.run-playwright.outputs.start_time }} \
+            ))
+
           else
             DURATION_SECONDS=0
           fi
-          DURATION_READABLE=$(printf '%02d:%02d:%02d' $((DURATION_SECONDS/3600)) $((DURATION_SECONDS%3600/60)) $((DURATION_SECONDS%60)))
-          echo "total=$TOTAL" >> $GITHUB_OUTPUT
-          echo "passed=$PASSED" >> $GITHUB_OUTPUT
-          echo "failed=$FAILED" >> $GITHUB_OUTPUT
-          echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
-          echo "duration_seconds=$DURATION_SECONDS" >> $GITHUB_OUTPUT
-          echo "duration_readable=$DURATION_READABLE" >> $GITHUB_OUTPUT
 
+          DURATION_READABLE=$(printf '%02d:%02d:%02d' \
+            $((DURATION_SECONDS/3600)) \
+            $((DURATION_SECONDS%3600/60)) \
+            $((DURATION_SECONDS%60)))
+
+          # --------------------------------------------------
+          # Export Results
+          # --------------------------------------------------
+
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+          echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+          echo "skipped=$SKIPPED" >> "$GITHUB_OUTPUT"
+          echo "duration_seconds=$DURATION_SECONDS" >> "$GITHUB_OUTPUT"
+          echo "duration_readable=$DURATION_READABLE" >> "$GITHUB_OUTPUT"
+
+      # --------------------------------------------------
+      # Upload Playwright HTML Report
+      # --------------------------------------------------
       - name: Upload Playwright Report
         if: always()
         uses: actions/upload-artifact@v4
@@ -95,53 +180,89 @@ jobs:
           path: flight/playwright-report/
           retention-days: 30
 
+      # --------------------------------------------------
+      # Get Artifact API URL
+      # --------------------------------------------------
       - name: Get Artifacts API URL
         if: always()
         id: get_artifacts
         run: |
-          # Query GitHub Actions API for artifacts attached to this run and pick the first artifact's archive url
-          resp=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts")
+
+          # Query GitHub Actions API
+          resp=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts")
+
           echo "$resp" | jq '.' > artifacts.json || true
-          url=$(echo "$resp" | jq -r '.artifacts[0].archive_download_url // empty')
+
+          url=$(echo "$resp" | jq -r \
+            '.artifacts[0].archive_download_url // empty')
+
           if [ -z "$url" ]; then
-            echo "artifact_url=" >> $GITHUB_OUTPUT
+            echo "artifact_url=" >> "$GITHUB_OUTPUT"
           else
-            echo "artifact_url=$url" >> $GITHUB_OUTPUT
+            echo "artifact_url=$url" >> "$GITHUB_OUTPUT"
           fi
 
+      # --------------------------------------------------
+      # Send Result to Slack
+      # --------------------------------------------------
       - name: Send Result to Slack
         if: always()
         env:
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+
           TOTAL: ${{ steps.results.outputs.total }}
           PASSED: ${{ steps.results.outputs.passed }}
           FAILED: ${{ steps.results.outputs.failed }}
           SKIPPED: ${{ steps.results.outputs.skipped }}
           DURATION: ${{ steps.results.outputs.duration_readable }}
+
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
         run: |
+
           TOTAL=${TOTAL:-0}
           PASSED=${PASSED:-0}
           FAILED=${FAILED:-0}
           SKIPPED=${SKIPPED:-0}
           DURATION=${DURATION:-00:00:00}
+
+          # --------------------------------------------------
+          # Determine Overall Status
+          # --------------------------------------------------
+
           if [ "${FAILED}" -eq 0 ]; then
+
             STATUS="PASSED"
             STATUS_EMOJI=":white_check_mark:"
             STATUS_COLOR="#36a64f"
+
           else
+
             STATUS="FAILED"
             STATUS_EMOJI=":x:"
             STATUS_COLOR="#ff0000"
+
           fi
-          # Prefer linking to the run page; direct artifact archive URLs require authentication and return 401 when opened in a browser.
+
+          # --------------------------------------------------
+          # Artifact Link
+          # --------------------------------------------------
+
           ARTIFACT_API="${{ steps.get_artifacts.outputs.artifact_url }}"
+
           if [ -n "$ARTIFACT_API" ]; then
             ARTIFACT_LINK="$RUN_URL"
           else
             ARTIFACT_LINK="$RUN_URL"
           fi
+
+          # --------------------------------------------------
+          # Create Slack Payload
+          # --------------------------------------------------
 
           cat > payload.json <<EOF
           {
@@ -155,7 +276,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": "*✈️ Flight Automation Result*\n*Status:* ${STATUS_EMOJI} ${STATUS}"
+                      "text": "*✈️ Flight Automation Result*\\n*Status:* ${STATUS_EMOJI} ${STATUS}"
                     }
                   },
                   {
@@ -164,10 +285,22 @@ jobs:
                   {
                     "type": "section",
                     "fields": [
-                      {"type": "mrkdwn", "text": "*Environment:*\nQA"},
-                      {"type": "mrkdwn", "text": "*Branch:*\n${{ github.ref_name }}"},
-                      {"type": "mrkdwn", "text": "*Duration:*\n${DURATION}"},
-                      {"type": "mrkdwn", "text": "*Run:*\n<${RUN_URL}|View GitHub Action>"}
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Environment:*\\nQA"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Branch:*\\n${{ github.ref_name }}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Duration:*\\n${DURATION}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Run:*\\n<${RUN_URL}|View GitHub Action>"
+                      }
                     ]
                   },
                   {
@@ -180,10 +313,22 @@ jobs:
                   {
                     "type": "section",
                     "fields": [
-                      {"type": "mrkdwn", "text": "*Total Tests:*\n${TOTAL}"},
-                      {"type": "mrkdwn", "text": "*Passed:*\n${PASSED}"},
-                      {"type": "mrkdwn", "text": "*Failed:*\n${FAILED}"},
-                      {"type": "mrkdwn", "text": "*Skipped:*\n${SKIPPED}"}
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Total Tests:*\\n${TOTAL}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Passed:*\\n${PASSED}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Failed:*\\n${FAILED}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Skipped:*\\n${SKIPPED}"
+                      }
                     ]
                   },
                   {
@@ -193,13 +338,16 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": "*Reports & Artifacts*\n<${ARTIFACT_LINK}|View Playwright artifacts>"
+                      "text": "*Reports & Artifacts*\\n<${ARTIFACT_LINK}|View Playwright artifacts>"
                     }
                   },
                   {
                     "type": "context",
                     "elements": [
-                      {"type": "mrkdwn", "text": "Generated by GitHub Actions | Playwright Tests"}
+                      {
+                        "type": "mrkdwn",
+                        "text": "Generated by GitHub Actions | Playwright Tests"
+                      }
                     ]
                   }
                 ]
@@ -207,11 +355,20 @@ jobs:
             ]
           }
           EOF
-          curl -X POST https://slack.com/api/chat.postMessage \
+
+          # --------------------------------------------------
+          # Send Message to Slack
+          # --------------------------------------------------
+
+          curl -X POST \
+            https://slack.com/api/chat.postMessage \
             -H "Authorization: Bearer ${SLACK_TOKEN}" \
             -H "Content-Type: application/json; charset=utf-8" \
             --data @payload.json
 
+      # --------------------------------------------------
+      # Fail Workflow If Tests Failed
+      # --------------------------------------------------
       - name: Fail Workflow If Tests Failed
         if: ${{ steps.results.outputs.failed != '0' }}
         run: exit 1
